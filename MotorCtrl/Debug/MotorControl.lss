@@ -1,0 +1,774 @@
+
+MotorControl.elf:     file format elf32-avr
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         00000496  00000000  00000000  00000074  2**1
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .data         00000000  00800060  00800060  0000050a  2**0
+                  CONTENTS, ALLOC, LOAD, DATA
+  2 .bss          00000005  00800060  00800060  0000050a  2**0
+                  ALLOC
+  3 .comment      00000030  00000000  00000000  0000050a  2**0
+                  CONTENTS, READONLY
+  4 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  0000053c  2**2
+                  CONTENTS, READONLY
+  5 .debug_aranges 00000038  00000000  00000000  00000578  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  6 .debug_info   000005a6  00000000  00000000  000005b0  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  7 .debug_abbrev 00000496  00000000  00000000  00000b56  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  8 .debug_line   00000359  00000000  00000000  00000fec  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  9 .debug_frame  0000009c  00000000  00000000  00001348  2**2
+                  CONTENTS, READONLY, DEBUGGING
+ 10 .debug_str    00000343  00000000  00000000  000013e4  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 11 .debug_loc    00000106  00000000  00000000  00001727  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 12 .debug_ranges 00000028  00000000  00000000  0000182d  2**0
+                  CONTENTS, READONLY, DEBUGGING
+
+Disassembly of section .text:
+
+00000000 <__vectors>:
+   0:	0e c0       	rjmp	.+28     	; 0x1e <__ctors_end>
+   2:	1d c0       	rjmp	.+58     	; 0x3e <__bad_interrupt>
+   4:	1c c0       	rjmp	.+56     	; 0x3e <__bad_interrupt>
+   6:	1b c0       	rjmp	.+54     	; 0x3e <__bad_interrupt>
+   8:	1a c0       	rjmp	.+52     	; 0x3e <__bad_interrupt>
+   a:	19 c0       	rjmp	.+50     	; 0x3e <__bad_interrupt>
+   c:	18 c0       	rjmp	.+48     	; 0x3e <__bad_interrupt>
+   e:	17 c0       	rjmp	.+46     	; 0x3e <__bad_interrupt>
+  10:	16 c0       	rjmp	.+44     	; 0x3e <__bad_interrupt>
+  12:	15 c0       	rjmp	.+42     	; 0x3e <__bad_interrupt>
+  14:	14 c0       	rjmp	.+40     	; 0x3e <__bad_interrupt>
+  16:	13 c0       	rjmp	.+38     	; 0x3e <__bad_interrupt>
+  18:	12 c0       	rjmp	.+36     	; 0x3e <__bad_interrupt>
+  1a:	11 c0       	rjmp	.+34     	; 0x3e <__bad_interrupt>
+  1c:	10 c0       	rjmp	.+32     	; 0x3e <__bad_interrupt>
+
+0000001e <__ctors_end>:
+  1e:	11 24       	eor	r1, r1
+  20:	1f be       	out	0x3f, r1	; 63
+  22:	cf e5       	ldi	r28, 0x5F	; 95
+  24:	d1 e0       	ldi	r29, 0x01	; 1
+  26:	de bf       	out	0x3e, r29	; 62
+  28:	cd bf       	out	0x3d, r28	; 61
+
+0000002a <__do_clear_bss>:
+  2a:	20 e0       	ldi	r18, 0x00	; 0
+  2c:	a0 e6       	ldi	r26, 0x60	; 96
+  2e:	b0 e0       	ldi	r27, 0x00	; 0
+  30:	01 c0       	rjmp	.+2      	; 0x34 <.do_clear_bss_start>
+
+00000032 <.do_clear_bss_loop>:
+  32:	1d 92       	st	X+, r1
+
+00000034 <.do_clear_bss_start>:
+  34:	a5 36       	cpi	r26, 0x65	; 101
+  36:	b2 07       	cpc	r27, r18
+  38:	e1 f7       	brne	.-8      	; 0x32 <.do_clear_bss_loop>
+  3a:	02 d0       	rcall	.+4      	; 0x40 <main>
+  3c:	2a c2       	rjmp	.+1108   	; 0x492 <_exit>
+
+0000003e <__bad_interrupt>:
+  3e:	e0 cf       	rjmp	.-64     	; 0x0 <__vectors>
+
+00000040 <main>:
+int main();
+
+
+
+int main(void)
+{
+  40:	1f 93       	push	r17
+  42:	cf 93       	push	r28
+  44:	df 93       	push	r29
+  46:	00 d0       	rcall	.+0      	; 0x48 <main+0x8>
+  48:	00 d0       	rcall	.+0      	; 0x4a <main+0xa>
+  4a:	cd b7       	in	r28, 0x3d	; 61
+  4c:	de b7       	in	r29, 0x3e	; 62
+
+	volatile int8_t delta = 0;
+  4e:	19 82       	std	Y+1, r1	; 0x01
+	volatile uint8_t sollwert = 128;
+  50:	80 e8       	ldi	r24, 0x80	; 128
+  52:	8a 83       	std	Y+2, r24	; 0x02
+	volatile uint8_t istwert = 127;
+  54:	8f e7       	ldi	r24, 0x7F	; 127
+  56:	8b 83       	std	Y+3, r24	; 0x03
+	volatile uint8_t toleranz = 5;
+  58:	85 e0       	ldi	r24, 0x05	; 5
+  5a:	8c 83       	std	Y+4, r24	; 0x04
+
+	init();
+  5c:	4b d1       	rcall	.+662    	; 0x2f4 <_Z4initv>
+	initADC();
+  5e:	9a d1       	rcall	.+820    	; 0x394 <_Z7initADCv>
+
+    while (1) 
+    {
+		delta = keyGain * readKeys();  // TODO: Overflow und co !
+  60:	9e d0       	rcall	.+316    	; 0x19e <_Z8readKeysv>
+  62:	89 83       	std	Y+1, r24	; 0x01
+		sollwert += delta;
+  64:	99 81       	ldd	r25, Y+1	; 0x01
+  66:	8a 81       	ldd	r24, Y+2	; 0x02
+  68:	89 0f       	add	r24, r25
+  6a:	8a 83       	std	Y+2, r24	; 0x02
+
+		// stellwert Limitieren
+		if (sollwert < PotiLimitLower) {
+  6c:	8a 81       	ldd	r24, Y+2	; 0x02
+  6e:	88 2f       	mov	r24, r24
+  70:	90 e0       	ldi	r25, 0x00	; 0
+  72:	09 2e       	mov	r0, r25
+  74:	00 0c       	add	r0, r0
+  76:	aa 0b       	sbc	r26, r26
+  78:	bb 0b       	sbc	r27, r27
+  7a:	bc 01       	movw	r22, r24
+  7c:	cd 01       	movw	r24, r26
+  7e:	a6 d1       	rcall	.+844    	; 0x3cc <__floatsisf>
+  80:	dc 01       	movw	r26, r24
+  82:	cb 01       	movw	r24, r22
+  84:	11 e0       	ldi	r17, 0x01	; 1
+  86:	23 e3       	ldi	r18, 0x33	; 51
+  88:	33 e3       	ldi	r19, 0x33	; 51
+  8a:	43 e2       	ldi	r20, 0x23	; 35
+  8c:	50 e4       	ldi	r21, 0x40	; 64
+  8e:	bc 01       	movw	r22, r24
+  90:	cd 01       	movw	r24, r26
+  92:	96 d1       	rcall	.+812    	; 0x3c0 <__cmpsf2>
+  94:	88 23       	and	r24, r24
+  96:	0c f0       	brlt	.+2      	; 0x9a <main+0x5a>
+  98:	10 e0       	ldi	r17, 0x00	; 0
+  9a:	11 23       	and	r17, r17
+  9c:	19 f0       	breq	.+6      	; 0xa4 <main+0x64>
+			sollwert = PotiLimitLower;
+  9e:	82 e0       	ldi	r24, 0x02	; 2
+  a0:	8a 83       	std	Y+2, r24	; 0x02
+  a2:	1b c0       	rjmp	.+54     	; 0xda <main+0x9a>
+			} else if (sollwert > PotiLimitUpper) {
+  a4:	8a 81       	ldd	r24, Y+2	; 0x02
+  a6:	88 2f       	mov	r24, r24
+  a8:	90 e0       	ldi	r25, 0x00	; 0
+  aa:	09 2e       	mov	r0, r25
+  ac:	00 0c       	add	r0, r0
+  ae:	aa 0b       	sbc	r26, r26
+  b0:	bb 0b       	sbc	r27, r27
+  b2:	bc 01       	movw	r22, r24
+  b4:	cd 01       	movw	r24, r26
+  b6:	8a d1       	rcall	.+788    	; 0x3cc <__floatsisf>
+  b8:	dc 01       	movw	r26, r24
+  ba:	cb 01       	movw	r24, r22
+  bc:	11 e0       	ldi	r17, 0x01	; 1
+  be:	22 e3       	ldi	r18, 0x32	; 50
+  c0:	33 e7       	ldi	r19, 0x73	; 115
+  c2:	4c e7       	ldi	r20, 0x7C	; 124
+  c4:	53 e4       	ldi	r21, 0x43	; 67
+  c6:	bc 01       	movw	r22, r24
+  c8:	cd 01       	movw	r24, r26
+  ca:	df d1       	rcall	.+958    	; 0x48a <__gesf2>
+  cc:	18 16       	cp	r1, r24
+  ce:	0c f0       	brlt	.+2      	; 0xd2 <main+0x92>
+  d0:	10 e0       	ldi	r17, 0x00	; 0
+  d2:	11 23       	and	r17, r17
+  d4:	11 f0       	breq	.+4      	; 0xda <main+0x9a>
+			sollwert = PotiLimitUpper;
+  d6:	8c ef       	ldi	r24, 0xFC	; 252
+  d8:	8a 83       	std	Y+2, r24	; 0x02
+		}
+
+
+		// Ist-Wert einlesen, (ADC Left Adjust Result, deshalb nur ein 8bit Register lesen)
+		istwert = ADCH;
+  da:	85 e2       	ldi	r24, 0x25	; 37
+  dc:	90 e0       	ldi	r25, 0x00	; 0
+  de:	fc 01       	movw	r30, r24
+  e0:	80 81       	ld	r24, Z
+  e2:	8b 83       	std	Y+3, r24	; 0x03
+
+
+		// Motor steuer Signal
+		if ((sollwert - istwert) > toleranz) {
+  e4:	8a 81       	ldd	r24, Y+2	; 0x02
+  e6:	28 2f       	mov	r18, r24
+  e8:	30 e0       	ldi	r19, 0x00	; 0
+  ea:	8b 81       	ldd	r24, Y+3	; 0x03
+  ec:	88 2f       	mov	r24, r24
+  ee:	90 e0       	ldi	r25, 0x00	; 0
+  f0:	28 1b       	sub	r18, r24
+  f2:	39 0b       	sbc	r19, r25
+  f4:	8c 81       	ldd	r24, Y+4	; 0x04
+  f6:	88 2f       	mov	r24, r24
+  f8:	90 e0       	ldi	r25, 0x00	; 0
+  fa:	41 e0       	ldi	r20, 0x01	; 1
+  fc:	82 17       	cp	r24, r18
+  fe:	93 07       	cpc	r25, r19
+ 100:	0c f0       	brlt	.+2      	; 0x104 <main+0xc4>
+ 102:	40 e0       	ldi	r20, 0x00	; 0
+ 104:	44 23       	and	r20, r20
+ 106:	99 f0       	breq	.+38     	; 0x12e <main+0xee>
+			// motor + signal geben
+			// mehr bremsen
+			PORTB |= (1 << PinMotP);	//PinMotP im PORTB setzen
+ 108:	88 e3       	ldi	r24, 0x38	; 56
+ 10a:	90 e0       	ldi	r25, 0x00	; 0
+ 10c:	28 e3       	ldi	r18, 0x38	; 56
+ 10e:	30 e0       	ldi	r19, 0x00	; 0
+ 110:	f9 01       	movw	r30, r18
+ 112:	20 81       	ld	r18, Z
+ 114:	20 61       	ori	r18, 0x10	; 16
+ 116:	fc 01       	movw	r30, r24
+ 118:	20 83       	st	Z, r18
+	        PORTB &= ~(1 << PinMotN);	//PinMotN im PORTB löschen
+ 11a:	88 e3       	ldi	r24, 0x38	; 56
+ 11c:	90 e0       	ldi	r25, 0x00	; 0
+ 11e:	28 e3       	ldi	r18, 0x38	; 56
+ 120:	30 e0       	ldi	r19, 0x00	; 0
+ 122:	f9 01       	movw	r30, r18
+ 124:	20 81       	ld	r18, Z
+ 126:	27 7f       	andi	r18, 0xF7	; 247
+ 128:	fc 01       	movw	r30, r24
+ 12a:	20 83       	st	Z, r18
+ 12c:	99 cf       	rjmp	.-206    	; 0x60 <main+0x20>
+
+		} else if  ((istwert - sollwert) > toleranz) {
+ 12e:	8b 81       	ldd	r24, Y+3	; 0x03
+ 130:	28 2f       	mov	r18, r24
+ 132:	30 e0       	ldi	r19, 0x00	; 0
+ 134:	8a 81       	ldd	r24, Y+2	; 0x02
+ 136:	88 2f       	mov	r24, r24
+ 138:	90 e0       	ldi	r25, 0x00	; 0
+ 13a:	28 1b       	sub	r18, r24
+ 13c:	39 0b       	sbc	r19, r25
+ 13e:	8c 81       	ldd	r24, Y+4	; 0x04
+ 140:	88 2f       	mov	r24, r24
+ 142:	90 e0       	ldi	r25, 0x00	; 0
+ 144:	41 e0       	ldi	r20, 0x01	; 1
+ 146:	82 17       	cp	r24, r18
+ 148:	93 07       	cpc	r25, r19
+ 14a:	0c f0       	brlt	.+2      	; 0x14e <main+0x10e>
+ 14c:	40 e0       	ldi	r20, 0x00	; 0
+ 14e:	44 23       	and	r20, r20
+ 150:	99 f0       	breq	.+38     	; 0x178 <__stack+0x19>
+			// motor - signal geben
+			// weniger bremsen
+			PORTB |= (1 << PinMotN);	//PinMotN im PORTB setzen
+ 152:	88 e3       	ldi	r24, 0x38	; 56
+ 154:	90 e0       	ldi	r25, 0x00	; 0
+ 156:	28 e3       	ldi	r18, 0x38	; 56
+ 158:	30 e0       	ldi	r19, 0x00	; 0
+ 15a:	f9 01       	movw	r30, r18
+ 15c:	20 81       	ld	r18, Z
+ 15e:	28 60       	ori	r18, 0x08	; 8
+ 160:	fc 01       	movw	r30, r24
+ 162:	20 83       	st	Z, r18
+			PORTB &= ~(1 << PinMotP);	//PinMotP im PORTB löschen
+ 164:	88 e3       	ldi	r24, 0x38	; 56
+ 166:	90 e0       	ldi	r25, 0x00	; 0
+ 168:	28 e3       	ldi	r18, 0x38	; 56
+ 16a:	30 e0       	ldi	r19, 0x00	; 0
+ 16c:	f9 01       	movw	r30, r18
+ 16e:	20 81       	ld	r18, Z
+ 170:	2f 7e       	andi	r18, 0xEF	; 239
+ 172:	fc 01       	movw	r30, r24
+ 174:	20 83       	st	Z, r18
+ 176:	74 cf       	rjmp	.-280    	; 0x60 <main+0x20>
+
+		} else {
+			// motor soll nicht laufen
+			PORTB &= ~(1 << PinMotN);	//PinMotN im PORTB löschen
+ 178:	88 e3       	ldi	r24, 0x38	; 56
+ 17a:	90 e0       	ldi	r25, 0x00	; 0
+ 17c:	28 e3       	ldi	r18, 0x38	; 56
+ 17e:	30 e0       	ldi	r19, 0x00	; 0
+ 180:	f9 01       	movw	r30, r18
+ 182:	20 81       	ld	r18, Z
+ 184:	27 7f       	andi	r18, 0xF7	; 247
+ 186:	fc 01       	movw	r30, r24
+ 188:	20 83       	st	Z, r18
+			PORTB &= ~(1 << PinMotP);	//PinMotP im PORTB löschen
+ 18a:	88 e3       	ldi	r24, 0x38	; 56
+ 18c:	90 e0       	ldi	r25, 0x00	; 0
+ 18e:	28 e3       	ldi	r18, 0x38	; 56
+ 190:	30 e0       	ldi	r19, 0x00	; 0
+ 192:	f9 01       	movw	r30, r18
+ 194:	20 81       	ld	r18, Z
+ 196:	2f 7e       	andi	r18, 0xEF	; 239
+ 198:	fc 01       	movw	r30, r24
+ 19a:	20 83       	st	Z, r18
+	volatile uint8_t toleranz = 5;
+
+	init();
+	initADC();
+
+    while (1) 
+ 19c:	61 cf       	rjmp	.-318    	; 0x60 <main+0x20>
+
+0000019e <_Z8readKeysv>:
+
+	}
+}
+
+
+int8_t readKeys() {
+ 19e:	cf 93       	push	r28
+ 1a0:	df 93       	push	r29
+ 1a2:	cd b7       	in	r28, 0x3d	; 61
+ 1a4:	de b7       	in	r29, 0x3e	; 62
+	static uint8_t keyState = 0;
+	volatile static bool up  = 0;
+	volatile static bool down = 0;
+
+	// Eingänge lesen
+	up	=  PINB & (1 << PinPlus);
+ 1a6:	86 e3       	ldi	r24, 0x36	; 54
+ 1a8:	90 e0       	ldi	r25, 0x00	; 0
+ 1aa:	fc 01       	movw	r30, r24
+ 1ac:	80 81       	ld	r24, Z
+ 1ae:	88 2f       	mov	r24, r24
+ 1b0:	90 e0       	ldi	r25, 0x00	; 0
+ 1b2:	81 70       	andi	r24, 0x01	; 1
+ 1b4:	99 27       	eor	r25, r25
+ 1b6:	21 e0       	ldi	r18, 0x01	; 1
+ 1b8:	89 2b       	or	r24, r25
+ 1ba:	09 f4       	brne	.+2      	; 0x1be <_Z8readKeysv+0x20>
+ 1bc:	20 e0       	ldi	r18, 0x00	; 0
+ 1be:	20 93 60 00 	sts	0x0060, r18	; 0x800060 <_edata>
+	down = PINB & (1 << PinMinus);
+ 1c2:	86 e3       	ldi	r24, 0x36	; 54
+ 1c4:	90 e0       	ldi	r25, 0x00	; 0
+ 1c6:	fc 01       	movw	r30, r24
+ 1c8:	80 81       	ld	r24, Z
+ 1ca:	88 2f       	mov	r24, r24
+ 1cc:	90 e0       	ldi	r25, 0x00	; 0
+ 1ce:	82 70       	andi	r24, 0x02	; 2
+ 1d0:	99 27       	eor	r25, r25
+ 1d2:	21 e0       	ldi	r18, 0x01	; 1
+ 1d4:	89 2b       	or	r24, r25
+ 1d6:	09 f4       	brne	.+2      	; 0x1da <_Z8readKeysv+0x3c>
+ 1d8:	20 e0       	ldi	r18, 0x00	; 0
+ 1da:	20 93 61 00 	sts	0x0061, r18	; 0x800061 <_ZZ8readKeysvE4down>
+	++keyCounter;
+ 1de:	80 91 62 00 	lds	r24, 0x0062	; 0x800062 <_ZZ8readKeysvE10keyCounter>
+ 1e2:	90 91 63 00 	lds	r25, 0x0063	; 0x800063 <_ZZ8readKeysvE10keyCounter+0x1>
+ 1e6:	01 96       	adiw	r24, 0x01	; 1
+ 1e8:	90 93 63 00 	sts	0x0063, r25	; 0x800063 <_ZZ8readKeysvE10keyCounter+0x1>
+ 1ec:	80 93 62 00 	sts	0x0062, r24	; 0x800062 <_ZZ8readKeysvE10keyCounter>
+
+	// Beide Tasten gleichzeitig --> ungültig.
+	if (up & down) {
+ 1f0:	80 91 60 00 	lds	r24, 0x0060	; 0x800060 <_edata>
+ 1f4:	28 2f       	mov	r18, r24
+ 1f6:	30 e0       	ldi	r19, 0x00	; 0
+ 1f8:	80 91 61 00 	lds	r24, 0x0061	; 0x800061 <_ZZ8readKeysvE4down>
+ 1fc:	88 2f       	mov	r24, r24
+ 1fe:	90 e0       	ldi	r25, 0x00	; 0
+ 200:	82 23       	and	r24, r18
+ 202:	93 23       	and	r25, r19
+ 204:	21 e0       	ldi	r18, 0x01	; 1
+ 206:	89 2b       	or	r24, r25
+ 208:	09 f4       	brne	.+2      	; 0x20c <_Z8readKeysv+0x6e>
+ 20a:	20 e0       	ldi	r18, 0x00	; 0
+ 20c:	22 23       	and	r18, r18
+ 20e:	21 f0       	breq	.+8      	; 0x218 <_Z8readKeysv+0x7a>
+		keyState = 0;
+ 210:	10 92 64 00 	sts	0x0064, r1	; 0x800064 <_ZZ8readKeysvE8keyState>
+		return(0);
+ 214:	80 e0       	ldi	r24, 0x00	; 0
+ 216:	6b c0       	rjmp	.+214    	; 0x2ee <_Z8readKeysv+0x150>
+	}
+
+	// Es wurde zuvor noch nichts gedrückt
+	if (keyState == 0) {
+ 218:	80 91 64 00 	lds	r24, 0x0064	; 0x800064 <_ZZ8readKeysvE8keyState>
+ 21c:	88 23       	and	r24, r24
+ 21e:	d1 f4       	brne	.+52     	; 0x254 <_Z8readKeysv+0xb6>
+		if (up) {
+ 220:	80 91 60 00 	lds	r24, 0x0060	; 0x800060 <_edata>
+ 224:	88 23       	and	r24, r24
+ 226:	49 f0       	breq	.+18     	; 0x23a <_Z8readKeysv+0x9c>
+			keyState= 1;
+ 228:	81 e0       	ldi	r24, 0x01	; 1
+ 22a:	80 93 64 00 	sts	0x0064, r24	; 0x800064 <_ZZ8readKeysvE8keyState>
+			keyCounter = 0;
+ 22e:	10 92 63 00 	sts	0x0063, r1	; 0x800063 <_ZZ8readKeysvE10keyCounter+0x1>
+ 232:	10 92 62 00 	sts	0x0062, r1	; 0x800062 <_ZZ8readKeysvE10keyCounter>
+			return(0);
+ 236:	80 e0       	ldi	r24, 0x00	; 0
+ 238:	5a c0       	rjmp	.+180    	; 0x2ee <_Z8readKeysv+0x150>
+		} else if (down) {
+ 23a:	80 91 61 00 	lds	r24, 0x0061	; 0x800061 <_ZZ8readKeysvE4down>
+ 23e:	88 23       	and	r24, r24
+ 240:	49 f0       	breq	.+18     	; 0x254 <_Z8readKeysv+0xb6>
+			keyState= 2;
+ 242:	82 e0       	ldi	r24, 0x02	; 2
+ 244:	80 93 64 00 	sts	0x0064, r24	; 0x800064 <_ZZ8readKeysvE8keyState>
+			keyCounter = 0;
+ 248:	10 92 63 00 	sts	0x0063, r1	; 0x800063 <_ZZ8readKeysvE10keyCounter+0x1>
+ 24c:	10 92 62 00 	sts	0x0062, r1	; 0x800062 <_ZZ8readKeysvE10keyCounter>
+			return(0);
+ 250:	80 e0       	ldi	r24, 0x00	; 0
+ 252:	4d c0       	rjmp	.+154    	; 0x2ee <_Z8readKeysv+0x150>
+		}
+	}
+
+	// up gedrückt, am warten
+	if ((keyState == 1) & (keyCounter >= debounceCounter)) {
+ 254:	80 91 64 00 	lds	r24, 0x0064	; 0x800064 <_ZZ8readKeysvE8keyState>
+ 258:	31 e0       	ldi	r19, 0x01	; 1
+ 25a:	81 30       	cpi	r24, 0x01	; 1
+ 25c:	09 f0       	breq	.+2      	; 0x260 <_Z8readKeysv+0xc2>
+ 25e:	30 e0       	ldi	r19, 0x00	; 0
+ 260:	80 91 62 00 	lds	r24, 0x0062	; 0x800062 <_ZZ8readKeysvE10keyCounter>
+ 264:	90 91 63 00 	lds	r25, 0x0063	; 0x800063 <_ZZ8readKeysvE10keyCounter+0x1>
+ 268:	21 e0       	ldi	r18, 0x01	; 1
+ 26a:	cc 97       	sbiw	r24, 0x3c	; 60
+ 26c:	08 f4       	brcc	.+2      	; 0x270 <_Z8readKeysv+0xd2>
+ 26e:	20 e0       	ldi	r18, 0x00	; 0
+ 270:	83 2f       	mov	r24, r19
+ 272:	82 23       	and	r24, r18
+ 274:	88 23       	and	r24, r24
+ 276:	a1 f0       	breq	.+40     	; 0x2a0 <_Z8readKeysv+0x102>
+		if (up) {
+ 278:	80 91 60 00 	lds	r24, 0x0060	; 0x800060 <_edata>
+ 27c:	88 23       	and	r24, r24
+ 27e:	41 f0       	breq	.+16     	; 0x290 <_Z8readKeysv+0xf2>
+			keyState = 0;
+ 280:	10 92 64 00 	sts	0x0064, r1	; 0x800064 <_ZZ8readKeysvE8keyState>
+			keyCounter = 0;
+ 284:	10 92 63 00 	sts	0x0063, r1	; 0x800063 <_ZZ8readKeysvE10keyCounter+0x1>
+ 288:	10 92 62 00 	sts	0x0062, r1	; 0x800062 <_ZZ8readKeysvE10keyCounter>
+			return(1);
+ 28c:	81 e0       	ldi	r24, 0x01	; 1
+ 28e:	2f c0       	rjmp	.+94     	; 0x2ee <_Z8readKeysv+0x150>
+		} else {
+			keyState = 0;
+ 290:	10 92 64 00 	sts	0x0064, r1	; 0x800064 <_ZZ8readKeysvE8keyState>
+			keyCounter = 0;
+ 294:	10 92 63 00 	sts	0x0063, r1	; 0x800063 <_ZZ8readKeysvE10keyCounter+0x1>
+ 298:	10 92 62 00 	sts	0x0062, r1	; 0x800062 <_ZZ8readKeysvE10keyCounter>
+			return(0);
+ 29c:	80 e0       	ldi	r24, 0x00	; 0
+ 29e:	27 c0       	rjmp	.+78     	; 0x2ee <_Z8readKeysv+0x150>
+		}
+	}
+
+		
+	// down gedrückt, am warten
+	if ((keyState == 2) & (keyCounter >= debounceCounter)) {
+ 2a0:	80 91 64 00 	lds	r24, 0x0064	; 0x800064 <_ZZ8readKeysvE8keyState>
+ 2a4:	31 e0       	ldi	r19, 0x01	; 1
+ 2a6:	82 30       	cpi	r24, 0x02	; 2
+ 2a8:	09 f0       	breq	.+2      	; 0x2ac <_Z8readKeysv+0x10e>
+ 2aa:	30 e0       	ldi	r19, 0x00	; 0
+ 2ac:	80 91 62 00 	lds	r24, 0x0062	; 0x800062 <_ZZ8readKeysvE10keyCounter>
+ 2b0:	90 91 63 00 	lds	r25, 0x0063	; 0x800063 <_ZZ8readKeysvE10keyCounter+0x1>
+ 2b4:	21 e0       	ldi	r18, 0x01	; 1
+ 2b6:	cc 97       	sbiw	r24, 0x3c	; 60
+ 2b8:	08 f4       	brcc	.+2      	; 0x2bc <_Z8readKeysv+0x11e>
+ 2ba:	20 e0       	ldi	r18, 0x00	; 0
+ 2bc:	83 2f       	mov	r24, r19
+ 2be:	82 23       	and	r24, r18
+ 2c0:	88 23       	and	r24, r24
+ 2c2:	a1 f0       	breq	.+40     	; 0x2ec <_Z8readKeysv+0x14e>
+		if (down) {
+ 2c4:	80 91 61 00 	lds	r24, 0x0061	; 0x800061 <_ZZ8readKeysvE4down>
+ 2c8:	88 23       	and	r24, r24
+ 2ca:	41 f0       	breq	.+16     	; 0x2dc <_Z8readKeysv+0x13e>
+			keyState = 0;
+ 2cc:	10 92 64 00 	sts	0x0064, r1	; 0x800064 <_ZZ8readKeysvE8keyState>
+			keyCounter = 0;
+ 2d0:	10 92 63 00 	sts	0x0063, r1	; 0x800063 <_ZZ8readKeysvE10keyCounter+0x1>
+ 2d4:	10 92 62 00 	sts	0x0062, r1	; 0x800062 <_ZZ8readKeysvE10keyCounter>
+			return(-1);
+ 2d8:	8f ef       	ldi	r24, 0xFF	; 255
+ 2da:	09 c0       	rjmp	.+18     	; 0x2ee <_Z8readKeysv+0x150>
+			} else {
+			keyState = 0;
+ 2dc:	10 92 64 00 	sts	0x0064, r1	; 0x800064 <_ZZ8readKeysvE8keyState>
+			keyCounter = 0;
+ 2e0:	10 92 63 00 	sts	0x0063, r1	; 0x800063 <_ZZ8readKeysvE10keyCounter+0x1>
+ 2e4:	10 92 62 00 	sts	0x0062, r1	; 0x800062 <_ZZ8readKeysvE10keyCounter>
+			return(0);
+ 2e8:	80 e0       	ldi	r24, 0x00	; 0
+ 2ea:	01 c0       	rjmp	.+2      	; 0x2ee <_Z8readKeysv+0x150>
+		}
+	}
+	return(0);
+ 2ec:	80 e0       	ldi	r24, 0x00	; 0
+}
+ 2ee:	df 91       	pop	r29
+ 2f0:	cf 91       	pop	r28
+ 2f2:	08 95       	ret
+
+000002f4 <_Z4initv>:
+
+void init(){
+ 2f4:	cf 93       	push	r28
+ 2f6:	df 93       	push	r29
+ 2f8:	cd b7       	in	r28, 0x3d	; 61
+ 2fa:	de b7       	in	r29, 0x3e	; 62
+	// Als Eingang konfigurieren (Eingang: clear bit)
+	DDRB &= ~(1 << PinPlus);
+ 2fc:	87 e3       	ldi	r24, 0x37	; 55
+ 2fe:	90 e0       	ldi	r25, 0x00	; 0
+ 300:	27 e3       	ldi	r18, 0x37	; 55
+ 302:	30 e0       	ldi	r19, 0x00	; 0
+ 304:	f9 01       	movw	r30, r18
+ 306:	20 81       	ld	r18, Z
+ 308:	2e 7f       	andi	r18, 0xFE	; 254
+ 30a:	fc 01       	movw	r30, r24
+ 30c:	20 83       	st	Z, r18
+	DDRB &= ~(1 << PinMinus);
+ 30e:	87 e3       	ldi	r24, 0x37	; 55
+ 310:	90 e0       	ldi	r25, 0x00	; 0
+ 312:	27 e3       	ldi	r18, 0x37	; 55
+ 314:	30 e0       	ldi	r19, 0x00	; 0
+ 316:	f9 01       	movw	r30, r18
+ 318:	20 81       	ld	r18, Z
+ 31a:	2d 7f       	andi	r18, 0xFD	; 253
+ 31c:	fc 01       	movw	r30, r24
+ 31e:	20 83       	st	Z, r18
+	DDRB &= ~(1 << PinVin);
+ 320:	87 e3       	ldi	r24, 0x37	; 55
+ 322:	90 e0       	ldi	r25, 0x00	; 0
+ 324:	27 e3       	ldi	r18, 0x37	; 55
+ 326:	30 e0       	ldi	r19, 0x00	; 0
+ 328:	f9 01       	movw	r30, r18
+ 32a:	20 81       	ld	r18, Z
+ 32c:	2b 7f       	andi	r18, 0xFB	; 251
+ 32e:	fc 01       	movw	r30, r24
+ 330:	20 83       	st	Z, r18
+
+	// Für die Taster die internen PullUp Resistors aktivieren
+	// richtig: set bit:
+	PORTB |= (1 << PinPlus);
+ 332:	88 e3       	ldi	r24, 0x38	; 56
+ 334:	90 e0       	ldi	r25, 0x00	; 0
+ 336:	28 e3       	ldi	r18, 0x38	; 56
+ 338:	30 e0       	ldi	r19, 0x00	; 0
+ 33a:	f9 01       	movw	r30, r18
+ 33c:	20 81       	ld	r18, Z
+ 33e:	21 60       	ori	r18, 0x01	; 1
+ 340:	fc 01       	movw	r30, r24
+ 342:	20 83       	st	Z, r18
+	PORTB |= (1 << PinMinus);
+ 344:	88 e3       	ldi	r24, 0x38	; 56
+ 346:	90 e0       	ldi	r25, 0x00	; 0
+ 348:	28 e3       	ldi	r18, 0x38	; 56
+ 34a:	30 e0       	ldi	r19, 0x00	; 0
+ 34c:	f9 01       	movw	r30, r18
+ 34e:	20 81       	ld	r18, Z
+ 350:	22 60       	ori	r18, 0x02	; 2
+ 352:	fc 01       	movw	r30, r24
+ 354:	20 83       	st	Z, r18
+
+
+	
+	//Als Ausgang konfigurieren: (Ausgang: set bit)
+	DDRB |= (1 << PinMotP);
+ 356:	87 e3       	ldi	r24, 0x37	; 55
+ 358:	90 e0       	ldi	r25, 0x00	; 0
+ 35a:	27 e3       	ldi	r18, 0x37	; 55
+ 35c:	30 e0       	ldi	r19, 0x00	; 0
+ 35e:	f9 01       	movw	r30, r18
+ 360:	20 81       	ld	r18, Z
+ 362:	20 61       	ori	r18, 0x10	; 16
+ 364:	fc 01       	movw	r30, r24
+ 366:	20 83       	st	Z, r18
+	DDRB |= (1 << PinMotN);
+ 368:	87 e3       	ldi	r24, 0x37	; 55
+ 36a:	90 e0       	ldi	r25, 0x00	; 0
+ 36c:	27 e3       	ldi	r18, 0x37	; 55
+ 36e:	30 e0       	ldi	r19, 0x00	; 0
+ 370:	f9 01       	movw	r30, r18
+ 372:	20 81       	ld	r18, Z
+ 374:	28 60       	ori	r18, 0x08	; 8
+ 376:	fc 01       	movw	r30, r24
+ 378:	20 83       	st	Z, r18
+	DDRB |= (1 << PinLED);
+ 37a:	87 e3       	ldi	r24, 0x37	; 55
+ 37c:	90 e0       	ldi	r25, 0x00	; 0
+ 37e:	27 e3       	ldi	r18, 0x37	; 55
+ 380:	30 e0       	ldi	r19, 0x00	; 0
+ 382:	f9 01       	movw	r30, r18
+ 384:	20 81       	ld	r18, Z
+ 386:	20 62       	ori	r18, 0x20	; 32
+ 388:	fc 01       	movw	r30, r24
+ 38a:	20 83       	st	Z, r18
+}
+ 38c:	00 00       	nop
+ 38e:	df 91       	pop	r29
+ 390:	cf 91       	pop	r28
+ 392:	08 95       	ret
+
+00000394 <_Z7initADCv>:
+
+
+void initADC()
+{
+ 394:	cf 93       	push	r28
+ 396:	df 93       	push	r29
+ 398:	cd b7       	in	r28, 0x3d	; 61
+ 39a:	de b7       	in	r29, 0x3e	; 62
+            (0 << REFS1) |		// Sets ref. voltage to VCC, bit 1 (tiny45 != mega8)
+            (0 << REFS0) |		// Sets ref. voltage to VCC, bit 0 (tiny45 != mega8)
+            (0 << MUX3)  |		// use ADC2 for input (PinVin=PB2), MUX bit 3
+            (0 << MUX2)  |		// use ADC2 for input (PinVin=PB2), MUX bit 2
+            (0 << MUX1)  |		// use ADC2 for input (PinVin=PB2), MUX bit 1
+            (1 << MUX0);		// use ADC2 for input (PinVin=PB2), MUX bit 0
+ 39c:	87 e2       	ldi	r24, 0x27	; 39
+ 39e:	90 e0       	ldi	r25, 0x00	; 0
+ 3a0:	21 e2       	ldi	r18, 0x21	; 33
+ 3a2:	fc 01       	movw	r30, r24
+ 3a4:	20 83       	st	Z, r18
+            (1 << ADEN)  |		// Enable ADC 
+            (1 << ADSC)  |		// start conversion
+			(1 << ADATE) |		// ADC auto trigger enable (trigger select in ASCSRB)
+			(1 << ADPS2) |		// set prescaler to 64, bit 2 
+            (1 << ADPS1) |		// set prescaler to 64, bit 1 
+            (0 << ADPS0);		// set prescaler to 64, bit 0  
+ 3a6:	86 e2       	ldi	r24, 0x26	; 38
+ 3a8:	90 e0       	ldi	r25, 0x00	; 0
+ 3aa:	26 ee       	ldi	r18, 0xE6	; 230
+ 3ac:	fc 01       	movw	r30, r24
+ 3ae:	20 83       	st	Z, r18
+					
+	ADCSRB =					// Set trigger source = Free Running mode (000)
+			 (0 << ADTS2)  |	// ADC Auto Trigger Source Bit 2
+			 (0 << ADTS1)  |	// ADC Auto Trigger Source Bit 1
+			 (0 << ADTS0);		// ADC Auto Trigger Source Bit 0
+ 3b0:	83 e2       	ldi	r24, 0x23	; 35
+ 3b2:	90 e0       	ldi	r25, 0x00	; 0
+ 3b4:	fc 01       	movw	r30, r24
+ 3b6:	10 82       	st	Z, r1
+}
+ 3b8:	00 00       	nop
+ 3ba:	df 91       	pop	r29
+ 3bc:	cf 91       	pop	r28
+ 3be:	08 95       	ret
+
+000003c0 <__cmpsf2>:
+ 3c0:	40 d0       	rcall	.+128    	; 0x442 <__fp_cmp>
+ 3c2:	08 f4       	brcc	.+2      	; 0x3c6 <__cmpsf2+0x6>
+ 3c4:	81 e0       	ldi	r24, 0x01	; 1
+ 3c6:	08 95       	ret
+
+000003c8 <__floatunsisf>:
+ 3c8:	e8 94       	clt
+ 3ca:	09 c0       	rjmp	.+18     	; 0x3de <__floatsisf+0x12>
+
+000003cc <__floatsisf>:
+ 3cc:	97 fb       	bst	r25, 7
+ 3ce:	3e f4       	brtc	.+14     	; 0x3de <__floatsisf+0x12>
+ 3d0:	90 95       	com	r25
+ 3d2:	80 95       	com	r24
+ 3d4:	70 95       	com	r23
+ 3d6:	61 95       	neg	r22
+ 3d8:	7f 4f       	sbci	r23, 0xFF	; 255
+ 3da:	8f 4f       	sbci	r24, 0xFF	; 255
+ 3dc:	9f 4f       	sbci	r25, 0xFF	; 255
+ 3de:	99 23       	and	r25, r25
+ 3e0:	a9 f0       	breq	.+42     	; 0x40c <__LOCK_REGION_LENGTH__+0xc>
+ 3e2:	f9 2f       	mov	r31, r25
+ 3e4:	96 e9       	ldi	r25, 0x96	; 150
+ 3e6:	bb 27       	eor	r27, r27
+ 3e8:	93 95       	inc	r25
+ 3ea:	f6 95       	lsr	r31
+ 3ec:	87 95       	ror	r24
+ 3ee:	77 95       	ror	r23
+ 3f0:	67 95       	ror	r22
+ 3f2:	b7 95       	ror	r27
+ 3f4:	f1 11       	cpse	r31, r1
+ 3f6:	f8 cf       	rjmp	.-16     	; 0x3e8 <__floatsisf+0x1c>
+ 3f8:	fa f4       	brpl	.+62     	; 0x438 <__LOCK_REGION_LENGTH__+0x38>
+ 3fa:	bb 0f       	add	r27, r27
+ 3fc:	11 f4       	brne	.+4      	; 0x402 <__LOCK_REGION_LENGTH__+0x2>
+ 3fe:	60 ff       	sbrs	r22, 0
+ 400:	1b c0       	rjmp	.+54     	; 0x438 <__LOCK_REGION_LENGTH__+0x38>
+ 402:	6f 5f       	subi	r22, 0xFF	; 255
+ 404:	7f 4f       	sbci	r23, 0xFF	; 255
+ 406:	8f 4f       	sbci	r24, 0xFF	; 255
+ 408:	9f 4f       	sbci	r25, 0xFF	; 255
+ 40a:	16 c0       	rjmp	.+44     	; 0x438 <__LOCK_REGION_LENGTH__+0x38>
+ 40c:	88 23       	and	r24, r24
+ 40e:	11 f0       	breq	.+4      	; 0x414 <__LOCK_REGION_LENGTH__+0x14>
+ 410:	96 e9       	ldi	r25, 0x96	; 150
+ 412:	11 c0       	rjmp	.+34     	; 0x436 <__LOCK_REGION_LENGTH__+0x36>
+ 414:	77 23       	and	r23, r23
+ 416:	21 f0       	breq	.+8      	; 0x420 <__LOCK_REGION_LENGTH__+0x20>
+ 418:	9e e8       	ldi	r25, 0x8E	; 142
+ 41a:	87 2f       	mov	r24, r23
+ 41c:	76 2f       	mov	r23, r22
+ 41e:	05 c0       	rjmp	.+10     	; 0x42a <__LOCK_REGION_LENGTH__+0x2a>
+ 420:	66 23       	and	r22, r22
+ 422:	71 f0       	breq	.+28     	; 0x440 <__LOCK_REGION_LENGTH__+0x40>
+ 424:	96 e8       	ldi	r25, 0x86	; 134
+ 426:	86 2f       	mov	r24, r22
+ 428:	70 e0       	ldi	r23, 0x00	; 0
+ 42a:	60 e0       	ldi	r22, 0x00	; 0
+ 42c:	2a f0       	brmi	.+10     	; 0x438 <__LOCK_REGION_LENGTH__+0x38>
+ 42e:	9a 95       	dec	r25
+ 430:	66 0f       	add	r22, r22
+ 432:	77 1f       	adc	r23, r23
+ 434:	88 1f       	adc	r24, r24
+ 436:	da f7       	brpl	.-10     	; 0x42e <__LOCK_REGION_LENGTH__+0x2e>
+ 438:	88 0f       	add	r24, r24
+ 43a:	96 95       	lsr	r25
+ 43c:	87 95       	ror	r24
+ 43e:	97 f9       	bld	r25, 7
+ 440:	08 95       	ret
+
+00000442 <__fp_cmp>:
+ 442:	99 0f       	add	r25, r25
+ 444:	00 08       	sbc	r0, r0
+ 446:	55 0f       	add	r21, r21
+ 448:	aa 0b       	sbc	r26, r26
+ 44a:	e0 e8       	ldi	r30, 0x80	; 128
+ 44c:	fe ef       	ldi	r31, 0xFE	; 254
+ 44e:	16 16       	cp	r1, r22
+ 450:	17 06       	cpc	r1, r23
+ 452:	e8 07       	cpc	r30, r24
+ 454:	f9 07       	cpc	r31, r25
+ 456:	c0 f0       	brcs	.+48     	; 0x488 <__fp_cmp+0x46>
+ 458:	12 16       	cp	r1, r18
+ 45a:	13 06       	cpc	r1, r19
+ 45c:	e4 07       	cpc	r30, r20
+ 45e:	f5 07       	cpc	r31, r21
+ 460:	98 f0       	brcs	.+38     	; 0x488 <__fp_cmp+0x46>
+ 462:	62 1b       	sub	r22, r18
+ 464:	73 0b       	sbc	r23, r19
+ 466:	84 0b       	sbc	r24, r20
+ 468:	95 0b       	sbc	r25, r21
+ 46a:	39 f4       	brne	.+14     	; 0x47a <__fp_cmp+0x38>
+ 46c:	0a 26       	eor	r0, r26
+ 46e:	61 f0       	breq	.+24     	; 0x488 <__fp_cmp+0x46>
+ 470:	23 2b       	or	r18, r19
+ 472:	24 2b       	or	r18, r20
+ 474:	25 2b       	or	r18, r21
+ 476:	21 f4       	brne	.+8      	; 0x480 <__fp_cmp+0x3e>
+ 478:	08 95       	ret
+ 47a:	0a 26       	eor	r0, r26
+ 47c:	09 f4       	brne	.+2      	; 0x480 <__fp_cmp+0x3e>
+ 47e:	a1 40       	sbci	r26, 0x01	; 1
+ 480:	a6 95       	lsr	r26
+ 482:	8f ef       	ldi	r24, 0xFF	; 255
+ 484:	81 1d       	adc	r24, r1
+ 486:	81 1d       	adc	r24, r1
+ 488:	08 95       	ret
+
+0000048a <__gesf2>:
+ 48a:	db df       	rcall	.-74     	; 0x442 <__fp_cmp>
+ 48c:	08 f4       	brcc	.+2      	; 0x490 <__gesf2+0x6>
+ 48e:	8f ef       	ldi	r24, 0xFF	; 255
+ 490:	08 95       	ret
+
+00000492 <_exit>:
+ 492:	f8 94       	cli
+
+00000494 <__stop_program>:
+ 494:	ff cf       	rjmp	.-2      	; 0x494 <__stop_program>

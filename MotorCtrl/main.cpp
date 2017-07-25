@@ -1,22 +1,16 @@
 /*
- * GccApplication1.cpp
+ * MotorCtrl.cpp
  *
  * Created: 24.06.2017 16:49:19
  * Author : joel
- 
- *  TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST 
- * TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST 
- * TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST 
- * TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST 
- * TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST 
- *
+ * 
  * Steuert den Stellmotor für die Bremse beim Crosstrainer Kettler Mondeo. (Original Elektronik defekt)
  * Input : + und - Tasten, Abgriff vom Poti der Stellmechanik
  * Output: MotorLinks und Motor Rechts, ev. Indikator-LED über Reset-Pin ?
  *
  * Die Poti-Spannung wird mit nur 8bit ADC auf 0..255 gemappt.
  * davon kann aber nur ein Teilbereich ausgenutzt werden, 
- * Einhränkungen ergeben sich durch PotiLimit[Upper/Lower]
+ * Einschränkungen ergeben sich durch PotiLimit[Upper/Lower]
  * Der Stellwert bewegt sich im identischen bereich.
  * Der Stellwert kann durch die Tasten verändert werden
  * Es findet ein Ständiger Abgleich statt zwischen ist-soll
@@ -33,16 +27,16 @@
 #define PinPlus		PB0				// Eingang
 #define PinMinus	PB1				// Eingang
 #define PinVin		PB2				// Eingang ADC
-#define PinMotP		PB3				// Ausgang	
-#define PinMotN		PB4				// Ausgang
+#define PinMotP		PB4				// Ausgang	
+#define PinMotN		PB3				// Ausgang
 #define PinLED		PB5				// optionaler Ausgang
 
-#define vRef				5.0		// [V]
-#define PotiVoltageUpper	4.8		// [V]
-#define PotiVoltageLower	0.5		// [V]
+#define vRef				5.0			// [V]
+#define PotiVoltageUpper	4.95		// [V]
+#define PotiVoltageLower	0.05		// [V]
 #define PotiLimitUpper		((PotiVoltageUpper/vRef)*255)		// nach ADC obere Limite für Poti
 #define PotiLimitLower		((PotiVoltageLower/vRef)*255)		// nach ADC untere Limite für Poti	
-#define debounceCounter		1		// Konstante zum Taster entprellen	std = 100
+#define debounceCounter		60		// Konstante zum Taster entprellen	std = 50 oder für sw-debug std = 1
 #define keyGain				1		// Ein Tastendruck ändert den Sollwert um (+/-)*keyGain, max. 127
 
 
@@ -67,7 +61,7 @@ int main(void)
 
     while (1) 
     {
-		delta = keyGain * readKeys();
+		delta = keyGain * readKeys();  // TODO: Overflow und co !
 		sollwert += delta;
 
 		// stellwert Limitieren
@@ -176,7 +170,6 @@ int8_t readKeys() {
 	return(0);
 }
 
-
 void init(){
 	// Als Eingang konfigurieren (Eingang: clear bit)
 	DDRB &= ~(1 << PinPlus);
@@ -184,8 +177,11 @@ void init(){
 	DDRB &= ~(1 << PinVin);
 
 	// Für die Taster die internen PullUp Resistors aktivieren
-	PORTB &= ~(1 << PinPlus);
-	PORTB &= ~(1 << PinMinus);
+	// richtig: set bit:
+	PORTB |= (1 << PinPlus);
+	PORTB |= (1 << PinMinus);
+
+
 	
 	//Als Ausgang konfigurieren: (Ausgang: set bit)
 	DDRB |= (1 << PinMotP);
