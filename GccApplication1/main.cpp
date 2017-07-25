@@ -43,7 +43,6 @@
 // functions
 void init();
 void initADC();
-void dbgPulse(int pulses);
 int8_t readKeys();
 int main();
 
@@ -147,7 +146,6 @@ int8_t readKeys() {
 		if (up) {
 			keyState = 0;
 			keyCounter = 0;
-			dbgPulse(4);
 			return(1);
 		} else {
 			keyState = 0;
@@ -162,7 +160,6 @@ int8_t readKeys() {
 		if (down) {
 			keyState = 0;
 			keyCounter = 0;
-			dbgPulse(7);
 			return(-1);
 			} else {
 			keyState = 0;
@@ -172,64 +169,6 @@ int8_t readKeys() {
 	}
 	return(0);
 }
-
-void dbgPulse(int pulses){
-	// macht pulse am motP ausgang 
-	for (int i = 0; i< pulses; i++){
-	PORTB |= (1 << PinMotP);	//PinMotP im PORTB setzen
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	PORTB &= ~(1 << PinMotP);	//PinMotP im PORTB löschen
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");
-	asm("NOP");	
-	}
-
-}
-
 
 void init(){
 	// Als Eingang konfigurieren (Eingang: clear bit)
