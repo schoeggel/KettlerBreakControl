@@ -10,7 +10,7 @@
  *
  * Die Poti-Spannung wird mit nur 8bit ADC auf 0..255 gemappt.
  * davon kann aber nur ein Teilbereich ausgenutzt werden, 
- * Einhränkungen ergeben sich durch PotiLimit[Upper/Lower]
+ * Einschränkungen ergeben sich durch PotiLimit[Upper/Lower]
  * Der Stellwert bewegt sich im identischen bereich.
  * Der Stellwert kann durch die Tasten verändert werden
  * Es findet ein Ständiger Abgleich statt zwischen ist-soll
@@ -27,22 +27,23 @@
 #define PinPlus		PB0				// Eingang
 #define PinMinus	PB1				// Eingang
 #define PinVin		PB2				// Eingang ADC
-#define PinMotP		PB3				// Ausgang	
-#define PinMotN		PB4				// Ausgang
+#define PinMotP		PB4				// Ausgang	
+#define PinMotN		PB3				// Ausgang
 #define PinLED		PB5				// optionaler Ausgang
 
 #define vRef				5.0		// [V]
-#define PotiVoltageUpper	4.8		// [V]
-#define PotiVoltageLower	0.5		// [V]
+#define PotiVoltageUpper	4.9		// [V]
+#define PotiVoltageLower	0.1		// [V]
 #define PotiLimitUpper		((PotiVoltageUpper/vRef)*255)		// nach ADC obere Limite für Poti
 #define PotiLimitLower		((PotiVoltageLower/vRef)*255)		// nach ADC untere Limite für Poti	
-#define debounceCounter		250		// Konstante zum Taster entprellen	std = 100 oder für sw-debug std = 1
-#define keyGain				5		// Ein Tastendruck ändert den Sollwert um (+/-)*keyGain, max. 127
+#define debounceCounter		60		// Konstante zum Taster entprellen	std = 50 oder für sw-debug std = 1
+#define keyGain				1		// Ein Tastendruck ändert den Sollwert um (+/-)*keyGain, max. 127
 
 
 // functions
 void init();
 void initADC();
+void dbgPulse(int pulses);
 int8_t readKeys();
 int main();
 
@@ -54,7 +55,7 @@ int main(void)
 	volatile int8_t delta = 0;
 	volatile uint8_t sollwert = 128;
 	volatile uint8_t istwert = 127;
-	volatile uint8_t toleranz = 30;
+	volatile uint8_t toleranz = 5;
 
 	init();
 	initADC();
@@ -146,6 +147,7 @@ int8_t readKeys() {
 		if (up) {
 			keyState = 0;
 			keyCounter = 0;
+			dbgPulse(4);
 			return(1);
 		} else {
 			keyState = 0;
@@ -160,6 +162,7 @@ int8_t readKeys() {
 		if (down) {
 			keyState = 0;
 			keyCounter = 0;
+			dbgPulse(7);
 			return(-1);
 			} else {
 			keyState = 0;
@@ -168,6 +171,63 @@ int8_t readKeys() {
 		}
 	}
 	return(0);
+}
+
+void dbgPulse(int pulses){
+	// macht pulse am motP ausgang 
+	for (int i = 0; i< pulses; i++){
+	PORTB |= (1 << PinMotP);	//PinMotP im PORTB setzen
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	PORTB &= ~(1 << PinMotP);	//PinMotP im PORTB löschen
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");
+	asm("NOP");	
+	}
+
 }
 
 
