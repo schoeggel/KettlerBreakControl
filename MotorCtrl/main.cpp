@@ -22,6 +22,7 @@
  */ 
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
 
 // Pin definition
 #define PinPlus		PB0				// Eingang
@@ -32,37 +33,58 @@
 #define PinLED		PB5				// optionaler Ausgang
 
 #define vRef				5.0			// [V]
-#define PotiVoltageUpper	4.95		// [V]
-#define PotiVoltageLower	0.05		// [V]
+#define PotiVoltageUpper	4.94		// [V]
+#define PotiVoltageLower	0.06		// [V]
 #define PotiLimitUpper		((PotiVoltageUpper/vRef)*255)		// nach ADC obere Limite für Poti
 #define PotiLimitLower		((PotiVoltageLower/vRef)*255)		// nach ADC untere Limite für Poti	
-#define debounceCounter		60		// Konstante zum Taster entprellen	std = 50 oder für sw-debug std = 1
+#define debounceCounter		60		// Konstante zum Taster entprellen	std = 60 oder für sw-debug std = 1
 #define keyGain				1		// Ein Tastendruck ändert den Sollwert um (+/-)*keyGain, max. 127
 
+// global var
+uint8_t modus;
+uint16_t sekunden;
 
 // functions
 void init();
 void initADC();
 int8_t readKeys();
 int main();
-
+void toggleMode();
+void initTimer();
 
 
 int main(void)
 {
 
 	volatile int8_t delta = 0;
+	volatile int8_t userwert = 128;
 	volatile uint8_t sollwert = 128;
 	volatile uint8_t istwert = 127;
 	volatile uint8_t toleranz = 5;
+	volatile uint8_t modus = 0;				// modus 0 = standard ; modus 1 = programm
 
 	init();
 	initADC();
+	initTimer();
 
     while (1) 
     {
 		delta = keyGain * readKeys();  // TODO: Overflow und co !
-		sollwert += delta;
+		userwert += delta;
+
+		// Ist-Wert einlesen, (ADC Left Adjust Result, deshalb nur ein 8bit Register lesen)
+		istwert = ADCH;
+
+
+		// Modus berücksichtigen
+		if (modus == 0) {				// Bremse manuell verstellen
+			sollwert = userwert;
+		} else	{						// Programm läuft
+					
+		}
+
+
+
 
 		// stellwert Limitieren
 		if (sollwert < PotiLimitLower) {
@@ -70,11 +92,6 @@ int main(void)
 			} else if (sollwert > PotiLimitUpper) {
 			sollwert = PotiLimitUpper;
 		}
-
-
-		// Ist-Wert einlesen, (ADC Left Adjust Result, deshalb nur ein 8bit Register lesen)
-		istwert = ADCH;
-
 
 		// Motor steuer Signal
 		if ((sollwert - istwert) > toleranz) {
@@ -110,7 +127,7 @@ int8_t readKeys() {
  * 0: nichts
  * 1: + gedrückt, abwarten
  * 2: - gedrückt, abwarten
- *
+ * 3: + und - gleichzeitig gedrückt, abwarten
  */
 	static uint16_t keyCounter = 0;
 	static uint8_t keyState = 0;
@@ -122,19 +139,21 @@ int8_t readKeys() {
 	down = PINB & (1 << PinMinus);
 	++keyCounter;
 
-	// Beide Tasten gleichzeitig --> ungültig.
-	if (up & down) {
-		keyState = 0;
-		return(0);
-	}
+	
+	
 
 	// Es wurde zuvor noch nichts gedrückt
-	if (keyState == 0) {
-		if (up) {
+	if (keyState == 0) {		
+		
+		if (up & down) {				// Beide Tasten gleichzeitig --> modus wechseln.
+			keyState = 3;
+			keyCounter = 0;
+			return(0);
+		} else if (up & ~down) {	 
 			keyState= 1;
 			keyCounter = 0;
 			return(0);
-		} else if (down) {
+		} else if (down & ~up) {
 			keyState= 2;
 			keyCounter = 0;
 			return(0);
@@ -167,8 +186,45 @@ int8_t readKeys() {
 			return(0);
 		}
 	}
+
+	// up und down gedrückt, am warten
+	if ((keyState == 3) & (keyCounter >= debounceCounter)) {
+		if (up & down) {
+			keyState = 0;
+			keyCounter = 0;
+			toggleMode();
+			return(0);
+			} else {
+			keyState = 0;
+			keyCounter = 0;
+			return(0);
+		}
+	}
+
 	return(0);
 }
+
+
+ void toggleMode(){
+/*	wechselt den Modus
+	* Modus 0: Standard, manuelles Einstellen der Bremsen über + und -
+	* Modus 1: Programm wird durchlaufen ca. 20 Minuten. Während dem Programm kann 
+	*          der Schwierigkeitsgrad durch + und - Tasten verändert werden.
+	* Modus > 1 : TODO ....
+ */
+
+	 if (modus == 0) {
+		modus = 1;
+		sekunden = 0;
+		sei();
+
+	 } else {
+		modus = 0;
+		cli();
+	 }
+
+}
+
 
 void init(){
 	// Als Eingang konfigurieren (Eingang: clear bit)
@@ -243,4 +299,28 @@ void initADC()
 			 (0 << ADTS0);		// ADC Auto Trigger Source Bit 0
 }
 
+void initTimer(){
+// konfiguriert und startet den timer, damit der Programmfortschritt bekannt ist.
+    
+	TCCR0B |= (1<<CS02);		// prescale CPU-Takt / 1024
+	TCCR0B |= (1<<CS00);		// prescale CPU-Takt / 1024
+    TIMSK  |= (1<<TOIE0);		// TOIE0: Timer/Counter0 Overflow Interrupt Enable
+	TIFR   |= (1<<TOV0);		// TIFR – Timer/Counter Interrupt Flag Register: set Timer/Counter0 Overflow Flag
+}
 
+
+ISR(TIM0_OVF_vect) {
+	static uint16_t i = 0;		// wird alle 1024 / cpuf Sekunden inkrementiert.
+	i++;
+	if (i >= 1953) {			// Es ist eine Sekunde vergangen
+		i = 0;
+		sekunden++;
+	}
+}
+
+
+uint8_t program(uint16_t s){
+// liefert einen stellwert für den zeitpunkt s
+
+
+} 
