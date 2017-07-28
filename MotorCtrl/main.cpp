@@ -23,10 +23,11 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/pgmspace.h>
 
 // Pin definition
-#define PinPlus		PB0				// Eingang
-#define PinMinus	PB1				// Eingang
+#define PinPlus		PB1				// Eingang
+#define PinMinus	PB0				// Eingang
 #define PinVin		PB2				// Eingang ADC
 #define PinMotP		PB4				// Ausgang	
 #define PinMotN		PB3				// Ausgang
@@ -37,12 +38,13 @@
 #define PotiVoltageLower	0.06		// [V]
 #define PotiLimitUpper		((PotiVoltageUpper/vRef)*255)		// nach ADC obere Limite für Poti
 #define PotiLimitLower		((PotiVoltageLower/vRef)*255)		// nach ADC untere Limite für Poti	
-#define debounceCounter		60		// Konstante zum Taster entprellen	std = 60 oder für sw-debug std = 1
+#define debounceCounter		30		// Konstante zum Taster entprellen	std = 60 oder für sw-debug std = 1 (0..255)
+#define debounceSpecial		200		// Taster entprellen, wenn beide Tasten gefrückt werden.	
 #define keyGain				1		// Ein Tastendruck ändert den Sollwert um (+/-)*keyGain, max. 127
 
 // global var
-uint8_t modus;
-uint16_t sekunden;
+uint8_t modus = 0;				// modus 0 = standard ; modus 1 = programm
+uint16_t sekunden = 0;
 
 // functions
 void init();
@@ -51,21 +53,42 @@ int8_t readKeys();
 int main();
 void toggleMode();
 void initTimer();
+uint8_t program(uint16_t s);
+
+ISR(TIMER0_OVF_vect) {
+	// cpu clock 8 mhz (int)
+	// 8 mhz/1024/7812 = 1hz
+	static uint16_t i = 0;		// wird alle 1024 / cpuf Sekunden inkrementiert.
+	i++;
+	// TEST:
+	if (i >= 700) {			// Es ist eine Test-Sekunde vergangen
+	//if (i >= 7812) {			// Es ist eine Sekunde vergangen
+	
+		i = 0;
+		sekunden++;
+		if (sekunden > 200*12) {  // auf 40 Minuten limitieren
+			sekunden = 200*12;
+			toggleMode();
+		}
+	}
+}
 
 
 int main(void)
 {
 
 	volatile int8_t delta = 0;
-	volatile int8_t userwert = 128;
+	volatile uint8_t userwert = 128;
 	volatile uint8_t sollwert = 128;
 	volatile uint8_t istwert = 127;
-	volatile uint8_t toleranz = 5;
-	volatile uint8_t modus = 0;				// modus 0 = standard ; modus 1 = programm
+	volatile uint8_t toleranz = 6;
+	 
 
 	init();
 	initADC();
 	initTimer();
+	//toggleMode();	// debug: direkt im programm mode starten
+
 
     while (1) 
     {
@@ -80,7 +103,8 @@ int main(void)
 		if (modus == 0) {				// Bremse manuell verstellen
 			sollwert = userwert;
 		} else	{						// Programm läuft
-					
+			sollwert = 	program(sekunden) + delta;	
+//			userwert = sollwert;	
 		}
 
 
@@ -129,17 +153,21 @@ int8_t readKeys() {
  * 2: - gedrückt, abwarten
  * 3: + und - gleichzeitig gedrückt, abwarten
  */
-	static uint16_t keyCounter = 0;
+	static uint8_t keyCounter = 0;
 	static uint8_t keyState = 0;
 	volatile static bool up  = 0;
 	volatile static bool down = 0;
 
 	// Eingänge lesen
-	up	=  PINB & (1 << PinPlus);
-	down = PINB & (1 << PinMinus);
-	++keyCounter;
-
+	// acive-low !
+	// weshalb kommt hier ein up =1 statt up= 0 :  up	=  ~(PINB & (1 << PinPlus));
+	up	=  (~PINB & (1 << PinPlus));
+	down = (~PINB & (1 << PinMinus));
 	
+
+	if (keyState != 0) {
+		++keyCounter;
+	}
 	
 
 	// Es wurde zuvor noch nichts gedrückt
@@ -188,7 +216,7 @@ int8_t readKeys() {
 	}
 
 	// up und down gedrückt, am warten
-	if ((keyState == 3) & (keyCounter >= debounceCounter)) {
+	if ((keyState == 3) & (keyCounter >= debounceSpecial)) {
 		if (up & down) {
 			keyState = 0;
 			keyCounter = 0;
@@ -309,18 +337,41 @@ void initTimer(){
 }
 
 
-ISR(TIM0_OVF_vect) {
-	static uint16_t i = 0;		// wird alle 1024 / cpuf Sekunden inkrementiert.
-	i++;
-	if (i >= 1953) {			// Es ist eine Sekunde vergangen
-		i = 0;
-		sekunden++;
-	}
-}
 
 
 uint8_t program(uint16_t s){
 // liefert einen stellwert für den zeitpunkt s
+// s geht von 0s 200*12s 
+// Stellwertbereich 0..255
+static const uint8_t prgData[] = { 
+	0x03, 0x0A, 0x10, 0x17, 0x1D, 0x1F, 0x20, 0x21,
+	0x22, 0x24, 0x25, 0x26, 0x28, 0x29, 0x2A, 0x2B,
+	0x2D, 0x2E, 0x2F, 0x31, 0x3A, 0x54, 0x58, 0x5D,
+	0x61, 0x65, 0x69, 0x6D, 0x71, 0x75, 0x78, 0x7B,
+	0x7E, 0x80, 0x82, 0x80, 0x7D, 0x7C, 0x7A, 0x78,
+	0x77, 0x76, 0x75, 0x75, 0x74, 0x74, 0x74, 0x74,
+	0x74, 0x75, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A,
+	0x7D, 0x7E, 0x80, 0x83, 0x84, 0x87, 0x89, 0x8C,
+	0x8E, 0x91, 0x94, 0x9A, 0xA0, 0xA9, 0xB3, 0xBF,
+	0x8D, 0x5C, 0x58, 0x55, 0x52, 0x4E, 0x4B, 0x47,
+	0x44, 0x40, 0x3D, 0x3A, 0x37, 0x33, 0x30, 0x2D,
+	0x2A, 0x27, 0x24, 0x21, 0x1E, 0x1C, 0x19, 0x17,
+	0x14, 0x12, 0x10, 0x0E, 0x0C, 0x0B, 0x0A, 0x08,
+	0x07, 0x06, 0x06, 0x05, 0x04, 0x04, 0x04, 0x04,
+	0x04, 0x05, 0x06, 0x06, 0x07, 0x08, 0x0A, 0x0C,
+	0x0D, 0x10, 0x12, 0x15, 0x17, 0x1A, 0x1D, 0x21,
+	0x23, 0x27, 0x2B, 0x30, 0x34, 0x38, 0x3C, 0x41,
+	0x46, 0x4B, 0x50, 0x56, 0x5C, 0x61, 0x67, 0x6C,
+	0x72, 0x78, 0x7E, 0x85, 0x8A, 0x90, 0x97, 0x9D,
+	0xA3, 0xA9, 0xAF, 0xB5, 0xBB, 0xC1, 0xC7, 0xCD,
+	0xD1, 0xD7, 0xDC, 0xE1, 0xE5, 0xEA, 0xEE, 0xF2,
+	0xF4, 0xF8, 0xFB, 0xFC, 0xFE, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFE, 0xFD, 0xFA, 0xF8, 0xF3, 0xEF, 0xE9,
+	0xE1, 0xD5, 0xC4, 0xAF, 0x99, 0x79, 0x58, 0x40,
+	0x31, 0x28, 0x22, 0x1B, 0x15, 0x0F, 0x08, 0x05
+};
 
+uint8_t p = s/12;
+return(prgData[p]);
 
 } 
