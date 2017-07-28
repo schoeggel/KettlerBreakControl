@@ -6,8 +6,11 @@
  * 
  * Steuert den Stellmotor für die Bremse beim Crosstrainer Kettler Mondeo. (Original Elektronik defekt)
  * Input : + und - Tasten, Abgriff vom Poti der Stellmechanik
- * Output: MotorLinks und Motor Rechts, ev. Indikator-LED über Reset-Pin ?
+ * Output: MotorLinks und Motor Rechts, ev. Indikator-LED über Reset-Pin ? ==> Nein
  *
+ * Unsauber: PB0 und PB1 sind vertauscht. diverse andere sind ebenfalls verpolt. 
+ * Müsste überarbeitet werden. 
+ * 
  * Die Poti-Spannung wird mit nur 8bit ADC auf 0..255 gemappt.
  * davon kann aber nur ein Teilbereich ausgenutzt werden, 
  * Einschränkungen ergeben sich durch PotiLimit[Upper/Lower]
@@ -15,6 +18,10 @@
  * Der Stellwert kann durch die Tasten verändert werden
  * Es findet ein Ständiger Abgleich statt zwischen ist-soll
  * entsprechend wird der Motor angesteuert.
+ * Test 28.07.2017: "+" Button zeiht die Bremse an. Vpot sinkt!
+ * Stellwert = 0 --> Bremse wird stark angezogen
+ * Stellwert = 255 --> Bremse gelöst
+
  * 
  * Einige der vars sind volatile, damit der compiler sie nicht wegoptimiert. 
  * Sonst sind sie im Debugmode (Simulator) nicht mehr sichtbar. 
@@ -28,18 +35,18 @@
 // Pin definition
 #define PinPlus		PB1				// Eingang
 #define PinMinus	PB0				// Eingang
-#define PinVin		PB2				// Eingang ADC
+#define PinVin		PB2				// Eingang ADC (v0 = max bremse; vmax = bremse gelöst)
 #define PinMotP		PB4				// Ausgang	
 #define PinMotN		PB3				// Ausgang
 #define PinLED		PB5				// optionaler Ausgang
 
-#define vRef				5.0			// [V]
-#define PotiVoltageUpper	4.94		// [V]
-#define PotiVoltageLower	0.06		// [V]
+#define vRef				5.00	// [V]
+#define PotiVoltageUpper	4.97	// [V]
+#define PotiVoltageLower	0.03	// [V]
 #define PotiLimitUpper		((PotiVoltageUpper/vRef)*255)		// nach ADC obere Limite für Poti
 #define PotiLimitLower		((PotiVoltageLower/vRef)*255)		// nach ADC untere Limite für Poti	
-#define debounceCounter		30		// Konstante zum Taster entprellen	std = 60 oder für sw-debug std = 1 (0..255)
-#define debounceSpecial		200		// Taster entprellen, wenn beide Tasten gefrückt werden.	
+#define debounceCounter		40		// Konstante zum Taster entprellen	std = 60 oder für sw-debug std = 1 (0..255)
+#define debounceSpecial		100		// Taster entprellen, wenn beide Tasten gefrückt werden.	
 #define keyGain				1		// Ein Tastendruck ändert den Sollwert um (+/-)*keyGain, max. 127
 
 // global var
@@ -52,18 +59,16 @@ void initADC();
 int8_t readKeys();
 int main();
 void toggleMode();
-void initTimer();
-uint8_t program(uint16_t s);
+void startTimer();
+void stopTimer();
+uint8_t program();
 
 ISR(TIMER0_OVF_vect) {
-	// cpu clock 8 mhz (int)
-	// 8 mhz/1024/7812 = 1hz
-	static uint16_t i = 0;		// wird alle 1024 / cpuf Sekunden inkrementiert.
+	// cpu läuft auf internen 8Mhz / 8 = 1 MHz. (Fuses CKDIV8 und CKSEL)
+	// 1 mhz/256/256/15 = 1hz
+	static uint16_t i = 0;		// wird alle 256*256/cpuf Sekunden inkrementiert.
 	i++;
-	// TEST:
-	if (i >= 700) {			// Es ist eine Test-Sekunde vergangen
-	//if (i >= 7812) {			// Es ist eine Sekunde vergangen
-	
+	if (i >= 15) {			// Es ist eine Test-Sekunde vergangen	
 		i = 0;
 		sekunden++;
 		if (sekunden > 200*12) {  // auf 40 Minuten limitieren
@@ -81,19 +86,26 @@ int main(void)
 	volatile uint8_t userwert = 128;
 	volatile uint8_t sollwert = 128;
 	volatile uint8_t istwert = 127;
-	volatile uint8_t toleranz = 6;
-	 
+	volatile uint8_t toleranz = 4;
+	volatile static int16_t check_hi = 0;
+	volatile static int16_t check_lo = 0;
 
 	init();
 	initADC();
-	initTimer();
-	//toggleMode();	// debug: direkt im programm mode starten
-
 
     while (1) 
     {
-		delta = keyGain * readKeys();  // TODO: Overflow und co !
-		userwert += delta;
+		delta = keyGain * readKeys(); 
+		// userwert darf nicht davonziehen:
+		check_hi = 255 - delta;		// check_hi ist 16bit signed!
+		check_lo =   0 - delta;		// check_lo ist 16bit signed!
+		if (check_hi < userwert ) {
+			userwert = 255;
+		} else if (check_lo > userwert ){
+			userwert = 0;
+		} else {
+			userwert += delta;
+		}
 
 		// Ist-Wert einlesen, (ADC Left Adjust Result, deshalb nur ein 8bit Register lesen)
 		istwert = ADCH;
@@ -103,7 +115,7 @@ int main(void)
 		if (modus == 0) {				// Bremse manuell verstellen
 			sollwert = userwert;
 		} else	{						// Programm läuft
-			sollwert = 	program(sekunden) + delta;	
+			sollwert = 	program();	
 //			userwert = sollwert;	
 		}
 
@@ -145,13 +157,15 @@ int main(void)
 int8_t readKeys() {
 /* Liefert +1 , 0 , oder -1 zurück, je nach Tastendruck 
  * debounceCycles: so oft muss die funktion durchlaufen werden, bevor ein 
- * Tastendruck gültig sein kann. 
+ * Tastendruck gültig sein kann.
+ * 
  * 
  * Keystates: 
  * 0: nichts
  * 1: + gedrückt, abwarten
  * 2: - gedrückt, abwarten
  * 3: + und - gleichzeitig gedrückt, abwarten
+ * 4: + und - als gültig erkannt. erneutes + und - erst nach loslassen möglich.
  */
 	static uint8_t keyCounter = 0;
 	static uint8_t keyState = 0;
@@ -163,30 +177,56 @@ int8_t readKeys() {
 	// weshalb kommt hier ein up =1 statt up= 0 :  up	=  ~(PINB & (1 << PinPlus));
 	up	=  (~PINB & (1 << PinPlus));
 	down = (~PINB & (1 << PinMinus));
-	
 
+	
 	if (keyState != 0) {
 		++keyCounter;
 	}
+	
+	// Nach ModeToggle müssen erst beide Tasten losgelassen werden.
+	if (keyState == 4){
+		if (~up && ~down && keyCounter >= debounceSpecial) {
+			keyState = 0;
+			return(0);
+		} else {
+			return(0);
+		}
+	}
+
+
 	
 
 	// Es wurde zuvor noch nichts gedrückt
 	if (keyState == 0) {		
 		
-		if (up & down) {				// Beide Tasten gleichzeitig --> modus wechseln.
+		if (up && down) {				// Beide Tasten gleichzeitig --> modus wechseln.
 			keyState = 3;
 			keyCounter = 0;
 			return(0);
-		} else if (up & ~down) {	 
+		} else if (up && ~down) {	 
 			keyState= 1;
 			keyCounter = 0;
 			return(0);
-		} else if (down & ~up) {
+		} else if (down && ~up) {
 			keyState= 2;
 			keyCounter = 0;
 			return(0);
 		}
+	} 
+
+	// Meist ist es so, dass wenn beabsichtigt wird, beide Buttons zu drücken,
+	// diese nicht exakt gleichzeitig gedrückt werden --> keyState != 3. Deshalb
+	// wird der hier überschrieben, aber nur wenn nicht zuerst losgelassen 
+	// werden muss (keyState 4)
+	
+	if (keyState !=3 && keyState !=4 && up && down) {
+		keyState = 3;
+		keyCounter = 0;
+		return(0);
 	}
+
+
+
 
 	// up gedrückt, am warten
 	if ((keyState == 1) & (keyCounter >= debounceCounter)) {
@@ -220,10 +260,10 @@ int8_t readKeys() {
 		if (up & down) {
 			keyState = 0;
 			keyCounter = 0;
+			keyState = 4;
 			toggleMode();
 			return(0);
-			} else {
-			keyState = 0;
+		} else {
 			keyCounter = 0;
 			return(0);
 		}
@@ -240,15 +280,16 @@ int8_t readKeys() {
 	*          der Schwierigkeitsgrad durch + und - Tasten verändert werden.
 	* Modus > 1 : TODO ....
  */
-
-	 if (modus == 0) {
+	cli();
+	if (modus == 0) {
 		modus = 1;
 		sekunden = 0;
+		startTimer();
 		sei();
 
 	 } else {
 		modus = 0;
-		cli();
+		stopTimer();
 	 }
 
 }
@@ -327,51 +368,62 @@ void initADC()
 			 (0 << ADTS0);		// ADC Auto Trigger Source Bit 0
 }
 
-void initTimer(){
+void startTimer(){
 // konfiguriert und startet den timer, damit der Programmfortschritt bekannt ist.
     
-	TCCR0B |= (1<<CS02);		// prescale CPU-Takt / 1024
-	TCCR0B |= (1<<CS00);		// prescale CPU-Takt / 1024
-    TIMSK  |= (1<<TOIE0);		// TOIE0: Timer/Counter0 Overflow Interrupt Enable
-	TIFR   |= (1<<TOV0);		// TIFR – Timer/Counter Interrupt Flag Register: set Timer/Counter0 Overflow Flag
+	TCCR0B |= (1 << CS02);		// prescale CPU-Takt / 256
+    TIMSK  |= (1 << TOIE0);		// TOIE0: Timer/Counter0 Overflow Interrupt Enable
+	TIFR   |= (1 << TOV0);		// TIFR – Timer/Counter Interrupt Flag Register: set Timer/Counter0 Overflow Flag
+}
+
+void stopTimer(){
+	TIMSK  &= ~(1 << TOIE0);	// TOIE0: Timer/Counter0 Overflow Interrupt disable
+	TIFR   &= ~(1 << TOV0);		// TIFR – Timer/Counter Interrupt Flag Register: clear Timer/Counter0 Overflow Flag
+	TCCR0B &= ~(1 << CS02);		// timer 0 stoppen
+	TCCR0B &= ~(1 << CS01);
+	TCCR0B &= ~(1 << CS00);
 }
 
 
 
 
-uint8_t program(uint16_t s){
+uint8_t program(){
 // liefert einen stellwert für den zeitpunkt s
 // s geht von 0s 200*12s 
 // Stellwertbereich 0..255
 static const uint8_t prgData[] = { 
-	0x03, 0x0A, 0x10, 0x17, 0x1D, 0x1F, 0x20, 0x21,
-	0x22, 0x24, 0x25, 0x26, 0x28, 0x29, 0x2A, 0x2B,
-	0x2D, 0x2E, 0x2F, 0x31, 0x3A, 0x54, 0x58, 0x5D,
-	0x61, 0x65, 0x69, 0x6D, 0x71, 0x75, 0x78, 0x7B,
-	0x7E, 0x80, 0x82, 0x80, 0x7D, 0x7C, 0x7A, 0x78,
-	0x77, 0x76, 0x75, 0x75, 0x74, 0x74, 0x74, 0x74,
-	0x74, 0x75, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A,
-	0x7D, 0x7E, 0x80, 0x83, 0x84, 0x87, 0x89, 0x8C,
-	0x8E, 0x91, 0x94, 0x9A, 0xA0, 0xA9, 0xB3, 0xBF,
-	0x8D, 0x5C, 0x58, 0x55, 0x52, 0x4E, 0x4B, 0x47,
-	0x44, 0x40, 0x3D, 0x3A, 0x37, 0x33, 0x30, 0x2D,
-	0x2A, 0x27, 0x24, 0x21, 0x1E, 0x1C, 0x19, 0x17,
-	0x14, 0x12, 0x10, 0x0E, 0x0C, 0x0B, 0x0A, 0x08,
-	0x07, 0x06, 0x06, 0x05, 0x04, 0x04, 0x04, 0x04,
-	0x04, 0x05, 0x06, 0x06, 0x07, 0x08, 0x0A, 0x0C,
-	0x0D, 0x10, 0x12, 0x15, 0x17, 0x1A, 0x1D, 0x21,
-	0x23, 0x27, 0x2B, 0x30, 0x34, 0x38, 0x3C, 0x41,
-	0x46, 0x4B, 0x50, 0x56, 0x5C, 0x61, 0x67, 0x6C,
-	0x72, 0x78, 0x7E, 0x85, 0x8A, 0x90, 0x97, 0x9D,
-	0xA3, 0xA9, 0xAF, 0xB5, 0xBB, 0xC1, 0xC7, 0xCD,
-	0xD1, 0xD7, 0xDC, 0xE1, 0xE5, 0xEA, 0xEE, 0xF2,
-	0xF4, 0xF8, 0xFB, 0xFC, 0xFE, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFE, 0xFD, 0xFA, 0xF8, 0xF3, 0xEF, 0xE9,
-	0xE1, 0xD5, 0xC4, 0xAF, 0x99, 0x79, 0x58, 0x40,
-	0x31, 0x28, 0x22, 0x1B, 0x15, 0x0F, 0x08, 0x05
+	0xFF, 0x00, 0xFF, 0xE7, 0xE1, 0xDF, 0xDE, 0xDD,
+	0xDC, 0xDA, 0xD9, 0xD8, 0xD6, 0xD5, 0xD4, 0xD3,
+	0xD1, 0xD0, 0xCF, 0xCD, 0xC4, 0xAA, 0xA6, 0xA1,
+	0x9D, 0x99, 0x95, 0x91, 0x8D, 0x89, 0x86, 0x83,
+	0x80, 0x7E, 0x7C, 0x7E, 0x81, 0x82, 0x84, 0x86,
+	0x87, 0x88, 0x89, 0x8A, 0x8A, 0x8B, 0x8B, 0x8B,
+	0x8B, 0x8A, 0x89, 0x89, 0x87, 0x86, 0x85, 0x84,
+	0x81, 0x80, 0x7E, 0x7B, 0x7A, 0x77, 0x75, 0x72,
+	0x70, 0x6D, 0x6A, 0x64, 0x5E, 0x55, 0x4B, 0x3F,
+	0x71, 0xA2, 0xA6, 0xA9, 0xAC, 0xB0, 0xB3, 0xB7,
+	0xBA, 0xBE, 0xC1, 0xC4, 0xC7, 0xCB, 0xCE, 0xD1,
+	0xD4, 0xD7, 0xDA, 0xDD, 0xE0, 0xE2, 0xE5, 0xE7,
+	0xEA, 0xEC, 0xEE, 0xF0, 0xF2, 0xF3, 0xF4, 0xF6,
+	0xF7, 0xF8, 0xF9, 0xFA, 0xFA, 0xFB, 0xFB, 0xFB,
+	0xFA, 0xFA, 0xF9, 0xF8, 0xF7, 0xF6, 0xF4, 0xF2,
+	0xF1, 0xEE, 0xEC, 0xE9, 0xE7, 0xE4, 0xE1, 0xDD,
+	0xDB, 0xD7, 0xD3, 0xCE, 0xCA, 0xC6, 0xC2, 0xBD,
+	0xB8, 0xB3, 0xAE, 0xA8, 0xA2, 0x9D, 0x97, 0x92,
+	0x8C, 0x86, 0x80, 0x79, 0x74, 0x6E, 0x67, 0x61,
+	0x5B, 0x55, 0x4F, 0x49, 0x43, 0x3D, 0x37, 0x31,
+	0x2D, 0x27, 0x22, 0x1D, 0x19, 0x14, 0x10, 0x0C,
+	0x0A, 0x06, 0x03, 0x02, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x01, 0x04, 0x06, 0x0B, 0x0F, 0x15,
+	0x1D, 0x29, 0x3A, 0x4F, 0x65, 0x85, 0xA6, 0xBE,
+	0xCD, 0xD6, 0xDC, 0xE3, 0xE9, 0xEF, 0xF6, 0xFA
 };
 
-uint8_t p = s/12;
-return(prgData[p]);
+uint8_t p = sekunden/12;
+if (p >= 0 && p <=200) {  // p MUSS innerhalb 0..200 liegen.
+	return(prgData[p]);
+} else {
+	return(127);
+}
 
 } 
